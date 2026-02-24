@@ -1,0 +1,22 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6EDC6E"></stop>
+      <stop offset="100%" stop-color="#2E7D32"></stop>
+    </linearGradient>
+  </defs>
+
+  <!-- Tige courbée -->
+  <path d="M100 170 
+           C95 130, 105 110, 100 80" stroke="#2E7D32" stroke-width="4" fill="none" stroke-linecap="round"></path>
+
+  <!-- Feuille gauche -->
+  <path d="M100 90
+           C65 70, 55 50, 75 40
+           C95 35, 110 60, 100 90Z" fill="url(#leafGrad)"></path>
+
+  <!-- Feuille droite -->
+  <path d="M100 90
+           C135 70, 145 50, 125 40
+           C105 35, 90 60, 100 90Z" fill="url(#leafGrad)"></path>
+</svg>
