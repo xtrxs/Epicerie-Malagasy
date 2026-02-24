@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 // ============================================================
 // CONFIG API
 // ============================================================
-const API_BASE = "http://localhost:5000/api/produits"
+const API_BASE = "http://localhost:5000/api"
 
 // ============================================================
 // TODO EXERCICE FRONTEND 1 : Créer ce hook personnalisé
@@ -23,7 +23,7 @@ function useProduits() {
     setLoading(true)
     try {
       // ...fetch...
-       const response = await fetch(API_BASE);
+       const response = await fetch("http://localhost:5000/api/produits");
 
       // vérifier si erreur serveur
       if (!response.ok) {
@@ -74,7 +74,7 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
   const unites = ["kg","litre","pièce","paquet","boîte","sachet"];
 
   const addProduit = async (produitData) => {
-    const res = await fetch(API_BASE, {
+    const res = await fetch("http://localhost:5000/api/produits", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(produitData),
@@ -86,7 +86,7 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
   };
 
   const updateProduit = async (id, produitData) => {
-    const res = await fetch(`${API_BASE}/${id}`, {
+    const res = await fetch(`${"http://localhost:5000/api/produits"}/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(produitData),
@@ -248,11 +248,24 @@ function FormulaireVente({ produits, onSuccess }) {
   const produitSelectionne = produits.find((p) => p.id === form.produit_id)
   const total = produitSelectionne ? produitSelectionne.prix * form.quantite : 0
 
+  const venteProduit = async (produitData) => {
+    const res = await fetch("http://localhost:5000/api/ventes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(produitData),
+    });
+
+    if (!res.ok) throw new Error("Erreur ajout");
+
+    return await res.json();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setEnvoi(true)
     setErreur(null)
     setSucces(null)
+
 
     // TODO : envoyer la vente à POST /api/ventes
     // Afficher le message de succès avec le total

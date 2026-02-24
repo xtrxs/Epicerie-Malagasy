@@ -10,17 +10,15 @@ CORS(app)
 # BASE DE DONNÉES SIMULÉE (remplacer par SQLite ou PostgreSQL)
 # ============================================================
 
-produits = [
-    {"id": "1", "nom": "Riz vary be", "categorie": "Céréales", "prix": 2500, "prix_achat": 1800, "stock": 150, "unite": "kg"},
-    {"id": "2", "nom": "Huile Tiko", "categorie": "Huiles", "prix": 8900, "prix_achat": 6500, "stock": 40, "unite": "litre"},
-    {"id": "3", "nom": "Sucre blanc", "categorie": "Épicerie", "prix": 3200, "prix_achat": 2400, "stock": 80, "unite": "kg"},
-    {"id": "4", "nom": "Thé Malaza", "categorie": "Boissons", "prix": 1500, "prix_achat": 900, "stock": 60, "unite": "paquet"},
-    {"id": "5", "nom": "Savon Omo", "categorie": "Hygiène", "prix": 2200, "prix_achat": 1600, "stock": 30, "unite": "pièce"},
-    {"id": "6", "nom": "Lait Socolait", "categorie": "Produits laitiers", "prix": 4500, "prix_achat": 3200, "stock": 25, "unite": "boîte"},
-    {"id": "7", "nom": "Farine de manioc", "categorie": "Céréales", "prix": 1800, "prix_achat": 1200, "stock": 0, "unite": "kg"},
-    {"id": "8", "nom": "Tomates en boîte", "categorie": "Conserves", "prix": 3700, "prix_achat": 2800, "stock": 55, "unite": "boîte"},
-]
+db = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="gestion_stocks"
+)
+cursor = db.cursor(dictionary=True, buffered=True)
 
+produits = []
 ventes = []
 
 # ============================================================
@@ -29,28 +27,23 @@ ventes = []
 
 @app.route("/api/produits", methods=["GET"])
 def get_produits():
-    # """
-    # TODO EXERCICE 1 :
-    # Retourner la liste de tous les produits.
-    # Bonus : filtrer par ?categorie=Céréales ou ?recherche=riz
-    # """
     categorie = request.args.get("categorie")
-    recherche = request.args.get("recherche", "").lower()
+    recherche = request.args.get("recherche")
 
-    resultat = produits
+    sql = "SELECT * FROM produits WHERE 1=1"
+    values = []
 
-    # TODO : implémenter le filtrage ici
-    # ...
     if categorie:
-        resultat =[
-            p for p in produits
-            if categorie.lower() in p["categorie"].lower()
-        ]
+        sql += " AND categorie LIKE %s"
+        values.append(f"%{categorie}%")
+
     if recherche:
-        resultat =[
-            p for p in produits
-            if recherche.lower() in p["nom"].lower()
-        ]   
+        sql += " AND nom LIKE %s"
+        values.append(f"%{recherche}%")
+
+    cursor.execute(sql, values)
+    resultat = cursor.fetchall()
+
     return jsonify(resultat), 200
 
 
@@ -70,78 +63,96 @@ def get_produit(produit_id):
         return jsonify({"error": "Produit non trouve"}), 404
     pass
 
+# @app.route("/api/produits", methods=["POST"])
+# def ajouter_produit():
+#     # TODO EXERCICE 3 :
+#     # Ajouter un nouveau produit.
+#     # Données attendues (JSON) :
+#     #   - nom (obligatoire)
+#     #   - categorie (obligatoire)
+#     #   - prix (obligatoire, > 0)
+#     #   - prix_achat (obligatoire, >= 0 et < prix)
+#     #   - stock (obligatoire, >= 0)
+#     #   - unite (obligatoire)
+
+#     # Retourner 201 avec le produit créé, ou 400 si données invalides.
+    
+#     # Récupérer JSON envoyé
+#     data = request.get_json()
+    
+#     # TODO : valider les données
+#     # TODO : créer le produit avec un id unique (uuid)
+#     # TODO : ajouter à la liste et retourner 201
+
+#     #Verifications des champs obligatoires
+#     if not data or "nom" not in data:
+#         return jsonify({"error": "Nom requis"}), 400
+#     if not data or "categorie" not in data:
+#         return jsonify({"error": "Categorie requis"}), 400
+#     if not data or "prix" not in data:
+#         return jsonify({"error": "Prix requis"}), 400
+#     if not data or "prix_achat" not in data:
+#         return jsonify({"error": "Prix_achat requis"}), 400
+#     if not data or "stock" not in data:
+#         return jsonify({"error": "Nombre de stock requis"}), 400
+#     if not data or "unite" not in data:
+#         return jsonify({"error": "Unite requis"}), 400
+
+#     #Recuperations des valeurs avec défaut
+#     nom = data["nom"]
+#     categorie = data.get("categorie", "")
+#     prix = data.get("prix", 0)
+#     prix_achat = data.get("prix_achat", 0)
+#     stock = data.get("stock", 0)
+#     unite = data.get("unite", "")
+
+#     # Validations
+#     if prix < 0:
+#         return jsonify({"error": "Prix doit être positif"}), 400
+
+#     if prix_achat <= 0 :
+#         return jsonify({"error": "Prix achat invalide"}), 400
+
+#     if prix_achat > prix:
+#         return jsonify({"error": "Prix achat > prix vente"}), 400
+
+#     if stock <= 0:
+#         return jsonify({"error": "Stock invalide"}), 400
+
+#     # Créer produit
+#     nouveau_produit = {
+#         "id": str(uuid.uuid4()),
+#         "nom": nom,
+#         "categorie": categorie,
+#         "prix": prix,
+#         "prix_achat": prix_achat,
+#         "stock": stock,
+#         "unite": unite
+#     }
+
+#     # Sauvegarder
+#     produits.append(nouveau_produit)
+
+#     #Réponse API
+#     return jsonify(nouveau_produit), 201
 @app.route("/api/produits", methods=["POST"])
-def ajouter_produit():
-    # TODO EXERCICE 3 :
-    # Ajouter un nouveau produit.
-    # Données attendues (JSON) :
-    #   - nom (obligatoire)
-    #   - categorie (obligatoire)
-    #   - prix (obligatoire, > 0)
-    #   - prix_achat (obligatoire, >= 0 et < prix)
-    #   - stock (obligatoire, >= 0)
-    #   - unite (obligatoire)
-
-    # Retourner 201 avec le produit créé, ou 400 si données invalides.
-    
-    # Récupérer JSON envoyé
+def add_produit():
     data = request.get_json()
-    
-    # TODO : valider les données
-    # TODO : créer le produit avec un id unique (uuid)
-    # TODO : ajouter à la liste et retourner 201
-
-    #Verifications des champs obligatoires
-    if not data or "nom" not in data:
-        return jsonify({"error": "Nom requis"}), 400
-    if not data or "categorie" not in data:
-        return jsonify({"error": "Categorie requis"}), 400
-    if not data or "prix" not in data:
-        return jsonify({"error": "Prix requis"}), 400
-    if not data or "prix_achat" not in data:
-        return jsonify({"error": "Prix_achat requis"}), 400
-    if not data or "stock" not in data:
-        return jsonify({"error": "Nombre de stock requis"}), 400
-    if not data or "unite" not in data:
-        return jsonify({"error": "Unite requis"}), 400
-
-    #Recuperations des valeurs avec défaut
-    nom = data["nom"]
-    categorie = data.get("categorie", "")
-    prix = data.get("prix", 0)
-    prix_achat = data.get("prix_achat", 0)
-    stock = data.get("stock", 0)
-    unite = data.get("unite", "")
-
-    # 4️⃣ validations
-    if prix < 0:
-        return jsonify({"error": "Prix doit être positif"}), 400
-
-    if prix_achat <= 0 :
-        return jsonify({"error": "Prix achat invalide"}), 400
-
-    if prix_achat > prix:
-        return jsonify({"error": "Prix achat > prix vente"}), 400
-
-    if stock <= 0:
-        return jsonify({"error": "Stock invalide"}), 400
-
-    # 5️⃣ créer produit
-    nouveau_produit = {
-        "id": str(uuid.uuid4()),
-        "nom": nom,
-        "categorie": categorie,
-        "prix": prix,
-        "prix_achat": prix_achat,
-        "stock": stock,
-        "unite": unite
-    }
-
-    # Sauvegarder
-    produits.append(nouveau_produit)
-
-    #Réponse API
-    return jsonify(nouveau_produit), 201
+    sql = """
+    INSERT INTO produits (nom, categorie, prix, prix_achat, stock, unite)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    """
+    values = (
+        data["nom"],
+        data["categorie"],
+        data["prix"],
+        data["prix_achat"],
+        data["stock"],
+        data["unite"]
+    )
+    cursor.execute(sql, values)
+    db.commit()  # important sinon rien n’est sauvegardé
+    return jsonify({"message": "Produit ajouté"}), 201
 
     pass
 
