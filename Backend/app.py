@@ -1,34 +1,20 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from datetime import datetime
-import uuid
+from database import get_cursor
 
 app = Flask(__name__)
 CORS(app)
 
 # ============================================================
-# BASE DE DONNÉES SIMULÉE (remplacer par SQLite ou PostgreSQL)
-# ============================================================
-
-db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",
-    database="gestion_stocks"
-)
-cursor = db.cursor(dictionary=True, buffered=True)
-
-produits = []
-ventes = []
-
-# ============================================================
 # ROUTES PRODUITS
 # ============================================================
-
 @app.route("/api/produits", methods=["GET"])
 def get_produits():
+
     categorie = request.args.get("categorie")
     recherche = request.args.get("recherche")
+
+    db, cursor = get_cursor()
 
     sql = "SELECT * FROM produits WHERE 1=1"
     values = []
@@ -44,104 +30,43 @@ def get_produits():
     cursor.execute(sql, values)
     resultat = cursor.fetchall()
 
-    return jsonify(resultat), 200
+    cursor.close()
+    db.close()
 
+    return jsonify(resultat)
 
-@app.route("/api/produits/<string:produit_id>", methods=["GET"])
+@app.route("/api/produits/<int:produit_id>", methods=["GET"])
 def get_produit(produit_id):
-    # """
-    # TODO EXERCICE 2 :
-    # Retourner un produit par son ID.
-    # Retourner une erreur 404 si non trouvé.
-    # """
-    # TODO : compléter cette fonction
-    produit = next(
-        (p for p in produits if p["id"] == produit_id), None
+
+    db, cursor = get_cursor()
+
+    cursor.execute(
+        "SELECT * FROM produits WHERE id=%s",
+        (produit_id,)
     )
 
-    if produit is None:
-        return jsonify({"error": "Produit non trouve"}), 404
-    pass
+    produit = cursor.fetchone()
 
-# @app.route("/api/produits", methods=["POST"])
-# def ajouter_produit():
-#     # TODO EXERCICE 3 :
-#     # Ajouter un nouveau produit.
-#     # Données attendues (JSON) :
-#     #   - nom (obligatoire)
-#     #   - categorie (obligatoire)
-#     #   - prix (obligatoire, > 0)
-#     #   - prix_achat (obligatoire, >= 0 et < prix)
-#     #   - stock (obligatoire, >= 0)
-#     #   - unite (obligatoire)
+    cursor.close()
+    db.close()
 
-#     # Retourner 201 avec le produit créé, ou 400 si données invalides.
-    
-#     # Récupérer JSON envoyé
-#     data = request.get_json()
-    
-#     # TODO : valider les données
-#     # TODO : créer le produit avec un id unique (uuid)
-#     # TODO : ajouter à la liste et retourner 201
+    if not produit:
+        return jsonify({"error": "Produit non trouvé"}), 404
 
-#     #Verifications des champs obligatoires
-#     if not data or "nom" not in data:
-#         return jsonify({"error": "Nom requis"}), 400
-#     if not data or "categorie" not in data:
-#         return jsonify({"error": "Categorie requis"}), 400
-#     if not data or "prix" not in data:
-#         return jsonify({"error": "Prix requis"}), 400
-#     if not data or "prix_achat" not in data:
-#         return jsonify({"error": "Prix_achat requis"}), 400
-#     if not data or "stock" not in data:
-#         return jsonify({"error": "Nombre de stock requis"}), 400
-#     if not data or "unite" not in data:
-#         return jsonify({"error": "Unite requis"}), 400
+    return jsonify(produit)
 
-#     #Recuperations des valeurs avec défaut
-#     nom = data["nom"]
-#     categorie = data.get("categorie", "")
-#     prix = data.get("prix", 0)
-#     prix_achat = data.get("prix_achat", 0)
-#     stock = data.get("stock", 0)
-#     unite = data.get("unite", "")
-
-#     # Validations
-#     if prix < 0:
-#         return jsonify({"error": "Prix doit être positif"}), 400
-
-#     if prix_achat <= 0 :
-#         return jsonify({"error": "Prix achat invalide"}), 400
-
-#     if prix_achat > prix:
-#         return jsonify({"error": "Prix achat > prix vente"}), 400
-
-#     if stock <= 0:
-#         return jsonify({"error": "Stock invalide"}), 400
-
-#     # Créer produit
-#     nouveau_produit = {
-#         "id": str(uuid.uuid4()),
-#         "nom": nom,
-#         "categorie": categorie,
-#         "prix": prix,
-#         "prix_achat": prix_achat,
-#         "stock": stock,
-#         "unite": unite
-#     }
-
-#     # Sauvegarder
-#     produits.append(nouveau_produit)
-
-#     #Réponse API
-#     return jsonify(nouveau_produit), 201
 @app.route("/api/produits", methods=["POST"])
 def add_produit():
+
     data = request.get_json()
+    db, cursor = get_cursor()
+
     sql = """
-    INSERT INTO produits (nom, categorie, prix, prix_achat, stock, unite)
-    VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO produits
+        (nom, categorie, prix, prix_achat, stock, unite)
+        VALUES (%s,%s,%s,%s,%s,%s)
     """
+
     values = (
         data["nom"],
         data["categorie"],
@@ -150,62 +75,91 @@ def add_produit():
         data["stock"],
         data["unite"]
     )
+
     cursor.execute(sql, values)
-    db.commit()  # important sinon rien n’est sauvegardé
+    db.commit()
+
+    cursor.close()
+    db.close()
+
     return jsonify({"message": "Produit ajouté"}), 201
 
-    pass
-
-
-@app.route("/api/produits/<string:produit_id>", methods=["PUT"])
+@app.route("/api/produits/<int:produit_id>", methods=["PUT"])
 def modifier_produit(produit_id):
-    # """
-    # TODO EXERCICE 4 :
-    # Modifier un produit existant (nom, prix, stock, categorie, unite).
-    # Retourner 404 si non trouvé.
-    # """
+
     data = request.get_json()
+    db, cursor = get_cursor()
 
-    # TODO : trouver le produit
-    # TODO : mettre à jour les champs
-    # TODO : retourner le produit mis à jour
+    cursor.execute(
+        "SELECT * FROM produits WHERE id=%s",
+        (produit_id,)
+    )
+    produit = cursor.fetchone()
 
-    produit = next((p for p in produits if p["id"] == produit_id), None)
-    if produit is None:
+    if not produit:
+        cursor.close()
+        db.close()
         return jsonify({"error": "Produit non trouvé"}), 404
-    
-    produit["nom"] = data.get("nom", produit["nom"])
-    produit["categorie"] = data.get("categorie", produit["categorie"])
-    produit["prix"] = data.get("prix", produit["prix"])
-    produit["prix_achat"] = data.get("prix_achat", produit["prix_achat"])
-    produit["stock"] = data.get("stock", produit["stock"])
-    produit["unite"] = data.get("unite", produit["unite"])
 
-    return jsonify(produit)
+    sql = """
+        UPDATE produits
+        SET nom=%s,
+            categorie=%s,
+            prix=%s,
+            prix_achat=%s,
+            stock=%s,
+            unite=%s
+        WHERE id=%s
+    """
 
-    pass
+    values = (
+        data.get("nom", produit["nom"]),
+        data.get("categorie", produit["categorie"]),
+        data.get("prix", produit["prix"]),
+        data.get("prix_achat", produit["prix_achat"]),
+        data.get("stock", produit["stock"]),
+        data.get("unite", produit["unite"]),
+        produit_id
+    )
 
+    cursor.execute(sql, values)
+    db.commit()
 
-@app.route("/api/produits/<string:produit_id>", methods=["DELETE"])
+    cursor.execute("SELECT * FROM produits WHERE id=%s", (produit_id,))
+    produit_modifie = cursor.fetchone()
+
+    cursor.close()
+    db.close()
+
+    return jsonify(produit_modifie)
+
+@app.route("/api/produits/<int:produit_id>", methods=["DELETE"])
 def supprimer_produit(produit_id):
-    """
-    TODO EXERCICE 5 :
-    Supprimer un produit par son ID.
-    Retourner 404 si non trouvé, 200 avec message si supprimé.
-    Bonus : empêcher la suppression si des ventes existent pour ce produit.
-    """
-    # TODO : compléter cette fonction
-    global produits
 
-    produit = next((p for p in produits if p["id"] == produit_id), None)
+    db, cursor = get_cursor()
 
-    if produit is None:
-     return jsonify({"error": "Produit non trouvé"}), 404
+    cursor.execute(
+        "SELECT * FROM produits WHERE id=%s",
+        (produit_id,)
+    )
 
-    produits = [p for p in produits if p["id"] != produit_id]
+    produit = cursor.fetchone()
 
-    return jsonify({"message": "Produit supprimé"}), 200
-    pass
+    if not produit:
+        cursor.close()
+        db.close()
+        return jsonify({"message": "Produit non trouvé"}), 404
+
+    cursor.execute(
+        "DELETE FROM produits WHERE id=%s",
+        (produit_id,)
+    )
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+    return jsonify({"message": "Produit supprimé avec succès"})
 
 
 # ============================================================

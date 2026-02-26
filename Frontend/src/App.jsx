@@ -5,14 +5,6 @@ import { useState, useEffect } from "react"
 // ============================================================
 const API_BASE = "http://localhost:5000/api"
 
-// ============================================================
-// TODO EXERCICE FRONTEND 1 : Créer ce hook personnalisé
-// useProduits() doit :
-//   - Récupérer les produits via GET /api/produits
-//   - Retourner { produits, loading, error, refetch }
-//
-// INDICE : utilisez useEffect + fetch
-// ============================================================
 function useProduits() {
   const [produits, setProduits] = useState([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +15,7 @@ function useProduits() {
     setLoading(true)
     try {
       // ...fetch...
-       const response = await fetch("http://localhost:5000/api/produits");
+       const response = await fetch(`${API_BASE}/produits`);
 
       // vérifier si erreur serveur
       if (!response.ok) {
@@ -49,14 +41,6 @@ function useProduits() {
   return { produits, loading, error, refetch: fetchProduits }
 }
 
-// ============================================================
-// TODO EXERCICE FRONTEND 2 : Compléter ce composant
-// FormulaireProduit doit :
-//   - Afficher un formulaire avec : nom, categorie, prix, stock, unite
-//   - En mode "ajout" : appeler POST /api/produits
-//   - En mode "édition" (prop produit fourni) : appeler PUT /api/produits/:id
-//   - Après succès : appeler onSuccess()
-// ============================================================
 function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
   const [form, setForm] = useState({
     nom: produit?.nom || "",
@@ -66,6 +50,18 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
     stock: produit?.stock || "",
     unite: produit?.unite || "kg",
   });
+  useEffect(() => {
+  if (produit) {
+    setForm({
+      nom: produit.nom || "",
+      categorie: produit.categorie || "",
+      prix: produit.prix || "",
+      prix_achat: produit.prix_achat || "",
+      stock: produit.stock || "",
+      unite: produit.unite || "kg",
+    });
+  }
+}, [produit]);
 
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState(null);
@@ -74,7 +70,7 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
   const unites = ["kg","litre","pièce","paquet","boîte","sachet"];
 
   const addProduit = async (produitData) => {
-    const res = await fetch("http://localhost:5000/api/produits", {
+    const res = await fetch(`${API_BASE}/produits`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(produitData),
@@ -86,7 +82,7 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
   };
 
   const updateProduit = async (id, produitData) => {
-    const res = await fetch(`${"http://localhost:5000/api/produits"}/${id}`, {
+    const res = await fetch(`${API_BASE}/produits/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(produitData),
@@ -96,6 +92,7 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
 
     return await res.json();
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -126,19 +123,7 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
       setEnvoi(false);
     }
   };
-    // TODO : compléter la logique d'envoi (POST ou PUT selon le mode)
-    // Penser à convertir prix et stock en nombres
-    // Appeler onSuccess() si tout se passe bien
-    // await fetch("http://localhost:5000/api/produits", {
-    //   method: "POST",
-    //   headers: {
-    //   "Content-Type": "application/json"
-    //   },
-    //   body: JSON.stringify({
-    //     nom: "nom",
-    //     prix: "prix"
-    //   })
-    // });
+
   return (
     <form onSubmit={handleSubmit} className="formulaire-produit">
       <h3>{produit ? "✏️ Modifier le produit" : "➕ Nouveau produit"}</h3>
@@ -393,11 +378,24 @@ export default function App() {
     const matchCategorie = !categorieFiltre || p.categorie === categorieFiltre
     return matchRecherche && matchCategorie
   })
-
-  const handleDelete = async (id) => {
-    if (!confirm("Supprimer ce produit ?")) return
     // TODO EXERCICE : appeler DELETE /api/produits/:id puis refetch()
+  const handleDelete = async (id) => {
+  try {
+    const res = await fetch(`${API_BASE}/produits/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      throw new Error("Erreur suppression");
+    }
+
+    // ✅ recharge la liste après suppression
+    refetch();
+
+  } catch (error) {
+    console.error(error);
   }
+};
 
   const handleSucces = () => {
     setModal(null)
