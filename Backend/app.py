@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from database import get_cursor
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -8,6 +9,7 @@ CORS(app)
 # ============================================================
 # ROUTES PRODUITS
 # ============================================================
+
 @app.route("/api/produits", methods=["GET"])
 def get_produits():
 
@@ -28,7 +30,12 @@ def get_produits():
         values.append(f"%{recherche}%")
 
     cursor.execute(sql, values)
-    resultat = cursor.fetchall()
+
+    colonnes = [col[0] for col in cursor.description]
+    resultat = [
+        dict(zip(colonnes, row))
+        for row in cursor.fetchall()
+    ]
 
     cursor.close()
     db.close()
@@ -45,13 +52,19 @@ def get_produit(produit_id):
         (produit_id,)
     )
 
-    produit = cursor.fetchone()
+    row = cursor.fetchone()
+
+    if not row:
+        cursor.close()
+        db.close()
+        return jsonify({"error": "Produit non trouvé"}), 404
+
+    # transformation en objet JSON
+    colonnes = [col[0] for col in cursor.description]
+    produit = dict(zip(colonnes, row))
 
     cursor.close()
     db.close()
-
-    if not produit:
-        return jsonify({"error": "Produit non trouvé"}), 404
 
     return jsonify(produit)
 
@@ -59,7 +72,7 @@ def get_produit(produit_id):
 def add_produit():
 
     data = request.get_json()
-    db, cursor = get_cursor()
+    db, cursor = get_cursor(dictionary=True)
 
     sql = """
         INSERT INTO produits
@@ -88,7 +101,7 @@ def add_produit():
 def modifier_produit(produit_id):
 
     data = request.get_json()
-    db, cursor = get_cursor()
+    db, cursor = get_cursor(dictionary=True)
 
     cursor.execute(
         "SELECT * FROM produits WHERE id=%s",
@@ -168,27 +181,77 @@ def supprimer_produit(produit_id):
 
 @app.route("/api/ventes", methods=["POST"])
 def enregistrer_vente():
-    """
-    TODO EXERCICE 6 :
-    Enregistrer une vente.
-    Données attendues (JSON) :
-      - produit_id
-      - quantite (> 0)
-
-    - Vérifier que le produit existe
-    - Vérifier que le stock est suffisant
-    - Déduire la quantité du stock
-    - Enregistrer la vente avec : id, produit_id, quantite, prix_unitaire, total, date
-    - Retourner 201 avec le détail de la vente
-    """
+    db, cursor = get_cursor(dictionary=True)
     data = request.get_json()
+    produit_id = data.get("produit_id")
+    quantite = data.get("quantite")
 
-    # TODO : compléter cette fonction
+    # Vérification des champs
+    if not produit_id or not quantite:
+        return jsonify({"error": "Produit et quantité requis"}), 400
+
+    # Récupérer le produit
+    cursor.execute("SELECT * FROM produits WHERE id = %s", (produit_id,))
+    produit = cursor.fetchone()
+
+    if not produit:
+        return jsonify({"error": "Produit introuvable"}), 404
+
+    if quantite > produit["stock"]:
+        return jsonify({"error": f"Stock insuffisant ({produit['stock']} disponible)"}), 400
+
+    # Calculer total
+    prix_unitaire = produit["prix"]
+    total = prix_unitaire * quantite
+
+    # Créer l’enregistrement dans ventes
+    cursor.execute(
+        "INSERT INTO ventes (produit_id, quantite, prix_unitaire, total, date_vente) VALUES (%s, %s, %s, %s, %s)",
+        (produit_id, quantite, prix_unitaire, total, datetime.now())
+    )
+
+    # Mettre à jour le stock du produit
+    nouveau_stock = produit["stock"] - quantite
+    cursor.execute(
+        "UPDATE produits SET stock = %s WHERE id = %s",
+        (nouveau_stock, produit_id)
+    )
+
+    db.commit()
+
+    # Retour JSON pour React
+    return jsonify({
+        "message": "Vente enregistrée avec succès",
+        "produit": produit["nom"],
+        "quantite": quantite,
+        "total": total,
+        "stock_restant": nouveau_stock
+    }), 201
     pass
 
 
 @app.route("/api/ventes", methods=["GET"])
 def get_ventes():
+    db, cursor = get_cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT v.id,
+               p.nom AS produit,
+               v.quantite,
+               v.prix_unitaire,
+               v.total,
+               v.date_vente
+        FROM ventes v
+        JOIN produits p ON v.produit_id = p.id
+        ORDER BY v.date_vente DESC
+    """)
+
+    ventes = cursor.fetchall()
+
+    cursor.close()
+    db.close()
+
+    return jsonify(ventes), 200
     """
     TODO EXERCICE 7 :
     Retourner l'historique des ventes.

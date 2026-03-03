@@ -148,7 +148,7 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
           onChange={(e) => setForm({ ...form, categorie: e.target.value })}
           required
         >
-          <option value="">-- Choisir --</option>
+          <option key="default" value="">-- Choisir --</option>
           {categories.map((cat) => (
             <option key={cat} value={cat}>{cat}</option>
           ))}
@@ -216,22 +216,110 @@ function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
   )
 }
 
-// ============================================================
-// TODO EXERCICE FRONTEND 3 : Compléter FormulaireVente
-// - Sélectionner un produit dans la liste
-// - Saisir une quantité
-// - Appeler POST /api/ventes
-// - Afficher le total calculé en temps réel
-// - Afficher un message de succès avec le total de la vente
-// ============================================================
-function FormulaireVente({ produits, onSuccess }) {
-  const [form, setForm] = useState({ produit_id: "", quantite: 1 })
-  const [envoi, setEnvoi] = useState(false)
-  const [succes, setSucces] = useState(null)
+// Ventes //
+
+function HistoriqueVentes() {
+  const [ventes, setVentes] = useState([])
+  const [loading, setLoading] = useState(true)
   const [erreur, setErreur] = useState(null)
 
-  const produitSelectionne = produits.find((p) => p.id === form.produit_id)
-  const total = produitSelectionne ? produitSelectionne.prix * form.quantite : 0
+  const fetchVentes = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch("http://localhost:5000/api/ventes")
+      if (!res.ok) throw new Error("Erreur chargement ventes")
+      const data = await res.json()
+      console.log("VENTES API:", data);
+      setVentes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setErreur("Impossible de charger les ventes")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      await fetchVentes();
+    };
+
+    if (mounted) load();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (loading) return <p>Chargement des ventes...</p>
+  if (erreur) return <p style={{ color: "red" }}>{erreur}</p>
+
+  return (
+    <div className="panel">
+      <div className="hh">
+        <h2>Historique des ventes</h2>
+      </div>
+
+      <div className="">
+        {ventes.length === 0 ? (
+          <p>Aucune vente enregistrée.</p>
+        ) : (
+          <table border="1" cellPadding="8">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Produit</th>
+                <th>Quantité</th>
+                <th>Total (Ar)</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ventes.map((vente) => (
+                <tr key={`vente-${vente.id || vente.date_vente}`}>
+                  <td>{vente.id}</td>
+                  <td>{vente.produit}</td>
+                  <td>{vente.quantite}</td>
+                  <td>{vente.total}</td>
+                  {/* <td>
+                    {new Date(vente.date_vente).toLocaleDateString("fr-FR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </td> */}
+                  <td>
+                    {vente.date_vente
+                      ? new Date(vente.date_vente).toLocaleString("fr-FR")
+                      : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+  
+}
+
+function FormulaireVente({ produits = [], onSuccess }) {
+  const [form, setForm] = useState({ produit_id: "", quantite: 1 });
+  const [envoi, setEnvoi] = useState(false);
+  const [succes, setSucces] = useState(null);
+  const [erreur, setErreur] = useState(null);
+
+  // Convertir form.produit_id en nombre pour trouver le produit
+  const produitSelectionne = produits?.find(
+  (p) => String(p?.id) === String(form.produit_id)
+);
+  const total = produitSelectionne
+  ? Number(produitSelectionne.prix ?? 0) * Number(form.quantite)
+  : 0;
 
   const venteProduit = async (produitData) => {
     const res = await fetch("http://localhost:5000/api/ventes", {
@@ -241,22 +329,36 @@ function FormulaireVente({ produits, onSuccess }) {
     });
 
     if (!res.ok) throw new Error("Erreur ajout");
-
     return await res.json();
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setEnvoi(true)
-    setErreur(null)
-    setSucces(null)
+    e.preventDefault();
+    setEnvoi(true);
+    setErreur(null);
+    setSucces(null);
 
+    try {
+      const data = await venteProduit({
+        produit_id: Number(form.produit_id),
+        quantite: Number(form.quantite),
+      });
 
-    // TODO : envoyer la vente à POST /api/ventes
-    // Afficher le message de succès avec le total
+      setSucces(`✅ Vente enregistrée ! Total : ${total.toLocaleString()} Ar`);
+      setForm({ produit_id: "", quantite: 1 });
 
-    setEnvoi(false)
-  }
+      if (onSuccess) onSuccess(data);
+    } catch (err) {
+      setErreur("❌ Une erreur est survenue lors de la vente");
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  // Filtrer uniquement les produits en stock
+  const produitsEnStock = Array.isArray(produits)
+  ? produits.filter((p) => Number(p.stock ?? 0) > 0)
+  : [];
 
   return (
     <form onSubmit={handleSubmit} className="formulaire-vente">
@@ -269,17 +371,21 @@ function FormulaireVente({ produits, onSuccess }) {
         <label>Produit *</label>
         <select
           value={form.produit_id}
-          onChange={(e) => setForm({ ...form, produit_id: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, produit_id: e.target.value })
+          }
           required
         >
           <option value="">-- Choisir un produit --</option>
-          {produits
-            .filter((p) => p.stock > 0)
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nom} — {p.prix.toLocaleString()} Ar/{p.unite} (stock: {p.stock})
-              </option>
-            ))}
+
+          {produitsEnStock.map((p, index) => (
+            <option
+              key={`produit-${p.id}`}
+              value={String(p.id)}
+            >
+              {p.nom ?? "Sans nom"} — {(p.prix ?? 0).toLocaleString()} Ar
+            </option>
+          ))}
         </select>
       </div>
 
@@ -288,7 +394,12 @@ function FormulaireVente({ produits, onSuccess }) {
         <input
           type="number"
           value={form.quantite}
-          onChange={(e) => setForm({ ...form, quantite: parseInt(e.target.value) || 1 })}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              quantite: parseInt(e.target.value) || 1,
+            })
+          }
           min="1"
           max={produitSelectionne?.stock || 9999}
           required
@@ -301,17 +412,25 @@ function FormulaireVente({ produits, onSuccess }) {
         </div>
       )}
 
-      <button type="submit" className="btn-vente" disabled={envoi || !form.produit_id}>
+      <button
+        type="submit"
+        className="btn-vente"
+        disabled={envoi || !form.produit_id}
+      >
         {envoi ? "Traitement..." : "Confirmer la vente"}
       </button>
     </form>
-  )
+  );
 }
+
+
 
 // ============================================================
 // TODO EXERCICE FRONTEND 4 : Compléter TableauDeBord
 // Afficher les stats retournées par GET /api/dashboard
 // ============================================================
+
+
 function TableauDeBord() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -361,6 +480,11 @@ function CarteProduit({ produit, onEdit, onDelete, onVendre }) {
   )
 }
 
+//
+// NOUVEAU HISTORIQUE DE VENTE
+//
+
+
 // ============================================================
 // COMPOSANT PRINCIPAL
 // ============================================================
@@ -374,7 +498,7 @@ export default function App() {
   const categories = [...new Set(produits.map((p) => p.categorie))]
 
   const produitsFiltres = produits.filter((p) => {
-    const matchRecherche = p.nom.toLowerCase().includes(recherche.toLowerCase())
+    const matchRecherche = p.nom?.toLowerCase().includes(recherche.toLowerCase())
     const matchCategorie = !categorieFiltre || p.categorie === categorieFiltre
     return matchRecherche && matchCategorie
   })
@@ -401,6 +525,10 @@ export default function App() {
     setModal(null)
     refetch()
   }
+
+  const [refresh, setRefresh] = useState(0)
+
+  // console.log("PRODUITS APP:", produits);
 
   return (
     <div className="app">
@@ -443,7 +571,7 @@ export default function App() {
                 onChange={(e) => setCategorieFiltre(e.target.value)}
                 className="filtre-categorie"
               >
-                <option value="">Toutes les catégories</option>
+                <option key="default" value="">Toutes les catégories</option>
                 {categories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
               <button className="btn-ajouter" onClick={() => setModal("ajouter")}>
@@ -476,8 +604,11 @@ export default function App() {
         {/* VUE VENTES */}
         {vue === "ventes" && (
           <div className="vue-ventes">
-            <FormulaireVente produits={produits} onSuccess={refetch} />
-            {/* TODO EXERCICE BONUS : Afficher l'historique des ventes depuis GET /api/ventes */}
+            <FormulaireVente
+              produits={produits} 
+              onSuccess={() => setRefresh(prev => prev + 1)}
+            />
+            <HistoriqueVentes key={refresh} />
           </div>
         )}
 
