@@ -1,26 +1,39 @@
 import { useState, useEffect } from "react";
-import { getProduits } from "./services/produitsApi";
+
+const API_BASE = "http://localhost:5000/api"
 
 export default function useProduits() {
-  const [produits, setProduits] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [produits, setProduits] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const refetch = async () => {
-    setLoading(true);
+  const fetchProduits = async () => {
+    // TODO : compléter cette fonction
+    setLoading(true)
     try {
-      const data = await getProduits();
+      // ...fetch...
+       const response = await fetch(`${API_BASE}/produits`);
+
+      // vérifier si erreur serveur
+      if (!response.ok) {
+        throw new Error("Impossible de récupérer les produits");
+      }
+
+      // convertir en JSON
+      const data = await response.json();
+
+      // sauvegarder dans le state
       setProduits(data);
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    refetch();
-  }, []);
+    fetchProduits()
+  }, [])
 
-  return { produits, loading, error, refetch, setProduits };
+  return { produits, loading, error, refetch: fetchProduits }
 }

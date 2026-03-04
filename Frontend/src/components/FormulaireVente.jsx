@@ -48,51 +48,53 @@ export default function FormulaireVente({ produits, onSuccess }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="formulaire-vente">
-      <h3>🛒 Enregistrer une vente</h3>
+    <div className="main">
+      <form onSubmit={handleSubmit} className="formulaire-vente">
+        <h3>🛒 Enregistrer une vente</h3>
 
-      {succes && <div className="alerte-succes">{succes}</div>}
-      {erreur && <div className="alerte-erreur">{erreur}</div>}
+        {succes && <div className="alerte-succes">{succes}</div>}
+        {erreur && <div className="alerte-erreur">{erreur}</div>}
 
-      <div className="champ">
-        <label>Produit *</label>
-        <select
-          value={form.produit_id}
-          onChange={(e) => setForm({ ...form, produit_id: e.target.value })}
-          required
-        >
-          <option value="">-- Choisir un produit --</option>
-          {produits
-            .filter((p) => p.stock > 0)
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nom} — {p.prix.toLocaleString()} Ar/{p.unite} (stock: {p.stock})
-              </option>
-            ))}
-        </select>
-      </div>
-
-      <div className="champ">
-        <label>Quantité *</label>
-        <input
-          type="number"
-          value={form.quantite}
-          onChange={(e) => setForm({ ...form, quantite: parseInt(e.target.value) || 1 })}
-          min="1"
-          max={produitSelectionne?.stock || 9999}
-          required
-        />
-      </div>
-
-      {produitSelectionne && (
-        <div className="apercu-total">
-          💰 Total : <strong>{total.toLocaleString()} Ar</strong>
+        <div className="champ">
+          <label>Produit *</label>
+          <select
+            value={form.produit_id}
+            onChange={(e) => setForm({ ...form, produit_id: e.target.value })}
+            required
+          >
+            <option value="">-- Choisir un produit --</option>
+            {produits
+              .filter((p) => p.stock > 0)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nom} — {p.prix.toLocaleString()} Ar/{p.unite} (stock: {p.stock})
+                </option>
+              ))}
+          </select>
         </div>
-      )}
 
-      <button type="submit" className="btn-vente" disabled={envoi || !form.produit_id}>
-        {envoi ? "Traitement..." : "Confirmer la vente"}
-      </button>
-    </form>
+        <div className="champ">
+          <label>Quantité *</label>
+          <input
+            type="number"
+            value={form.quantite}
+            onChange={(e) => setForm({ ...form, quantite: parseInt(e.target.value) || 1 })}
+            min="1"
+            max={produitSelectionne?.stock || 9999}
+            required
+          />
+        </div>
+
+        {produitSelectionne && (
+          <div className="apercu-total">
+            💰 Total : <strong>{total.toLocaleString()} Ar</strong>
+          </div>
+        )}
+
+        <button type="submit" className="btn-vente" disabled={envoi || !form.produit_id}>
+          {envoi ? "Traitement..." : "Confirmer la vente"}
+        </button>
+      </form>
+    </div>
   )
 }

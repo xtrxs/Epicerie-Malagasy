@@ -107,7 +107,7 @@ export default function FormulaireProduit({ produit = null, onSuccess, onCancel 
           onChange={(e) => setForm({ ...form, categorie: e.target.value })}
           required
         >
-          <option value="">-- Choisir --</option>
+          <option key="default" value="">-- Choisir --</option>
           {categories.map((cat) => (
             <option key={cat} value={cat}>{cat}</option>
           ))}
