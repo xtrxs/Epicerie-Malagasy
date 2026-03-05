@@ -7,9 +7,9 @@ export default function TopVentes({ topVentes }) {
   return (  
     <ul>
       {topVentes.map((prod) => (
-        <li key={prod.nom}>
-          {prod.nom} - {prod.quantite} unités
-        </li>
+          <li  key={prod.nom}>
+            {prod.nom} - {prod.quantite} unités
+          </li>
       ))}
     </ul>
   );

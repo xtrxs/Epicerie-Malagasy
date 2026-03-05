@@ -5,7 +5,7 @@ export default function Ruptures({ ruptures }) {
   return (
     <div>
       {ruptures.map((prod, idx) => (
-        <div key={idx} className="rupture-item">
+        <div key={idx} className="">
           <strong>{prod.nom}</strong> <br />
           {prod.categorie} - {prod.quantite} {prod.unite || "unités"}
         </div>

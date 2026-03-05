@@ -31,26 +31,27 @@ export default function ProduitsPage() {
 
   return (
     <div className="main">
-
-      <div className="barre-outils">
-          <input
-            type="text"
-            placeholder="🔍 Rechercher un produit..."
-            value={recherche}
-            onChange={(e) => setRecherche(e.target.value)}
-            className="champ-recherche"
-          />
-          <select
-            value={categorieFiltre}
-            onChange={(e) => setCategorieFiltre(e.target.value)}
-            className="filtre-categorie"
-          >
-            <option key="default" value="">Toutes les catégories</option>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <button className="btn-ajouter" onClick={() => setModal("ajouter")}>
-            + Ajouter un produit
-          </button>
+      <div className="main">
+        <div className="barre-outils">
+            <input
+              type="text"
+              placeholder="🔍 Rechercher un produit..."
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              className="champ-recherche"
+            />
+            <select
+              value={categorieFiltre}
+              onChange={(e) => setCategorieFiltre(e.target.value)}
+              className="filtre-categorie"
+            >
+              <option key="default" value="">Toutes les catégories</option>
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button className="btn-ajouter" onClick={() => setModal("ajouter")}>
+              + Ajouter un produit
+            </button>
+        </div>
       </div>
 
       {loading && <div className="chargement">Chargement...</div>}
