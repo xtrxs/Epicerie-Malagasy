@@ -27,6 +27,7 @@ export default function ProduitsPage() {
     setModal(null);
     refetch();
   };
+   console.log("PRODUITS APP:", produits);
 
   return (
     <div className="main">

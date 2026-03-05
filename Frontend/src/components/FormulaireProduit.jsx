@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+const API_BASE = "http://localhost:5000/api";
 
 export default function FormulaireProduit({ produit = null, onSuccess, onCancel }) {
   const [form, setForm] = useState({

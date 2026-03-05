@@ -32,3 +32,14 @@ export const deleteProduit = async (id) => {
   return res.json();
 };
 
+export async function fetchDashboard() {
+  try {
+    const res = await fetch(`${API_BASE}/dashboard`);
+    if (!res.ok) throw new Error("Erreur réseau");
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error("Erreur fetchDashboard:", err);
+    return null;
+  }
+}

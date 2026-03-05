@@ -4,7 +4,8 @@ from database import get_cursor
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)
+# Autorise uniquement ton frontend Vite
+CORS(app, origins=["http://localhost:5173"])
 
 # ============================================================
 # ROUTES PRODUITS
@@ -265,20 +266,92 @@ def get_ventes():
 # ROUTE TABLEAU DE BORD
 # ============================================================
 
+# @app.route("/api/dashboard", methods=["GET"])
+# def get_dashboard():
+#     """
+#     TODO EXERCICE 8 (Bonus) :
+#     Retourner un résumé :
+#       - nombre total de produits
+#       - produits en rupture de stock (stock == 0)
+#       - chiffre d'affaires total (somme de toutes les ventes)
+#       - marge brute totale (somme des (prix - prix_achat) * quantite sur les ventes)
+#       - produit le plus vendu
+#       - valeur totale du stock (prix * stock pour chaque produit)
+#     """
+#     # TODO : compléter cette fonction
+#     pass
+
 @app.route("/api/dashboard", methods=["GET"])
-def get_dashboard():
-    """
-    TODO EXERCICE 8 (Bonus) :
-    Retourner un résumé :
-      - nombre total de produits
-      - produits en rupture de stock (stock == 0)
-      - chiffre d'affaires total (somme de toutes les ventes)
-      - marge brute totale (somme des (prix - prix_achat) * quantite sur les ventes)
-      - produit le plus vendu
-      - valeur totale du stock (prix * stock pour chaque produit)
-    """
-    # TODO : compléter cette fonction
-    pass
+def dashboard():
+    db, cursor = get_cursor()
+
+    try:
+        # Total produits
+        cursor.execute("SELECT COUNT(*) FROM produits")
+        total_produits = cursor.fetchone()[0] or 0
+
+        # Produits en rupture de stock
+        cursor.execute("SELECT COUNT(*) FROM produits WHERE stock = 0")
+        ruptures = cursor.fetchone()[0] or 0
+
+        # Stock faible (entre 1 et 9)
+        cursor.execute("SELECT COUNT(*) FROM produits WHERE stock < 10 AND stock > 0")
+        stocks_faibles = cursor.fetchone()[0] or 0
+
+        # Valeur totale du stock = stock * prix
+        cursor.execute("SELECT SUM(stock * prix) FROM produits")
+        valeur_stock = float(cursor.fetchone()[0] or 0)
+
+        # Chiffre d'affaire total = somme des totaux des ventes
+        cursor.execute("SELECT SUM(total) FROM ventes")
+        chiffre_affaire = float(cursor.fetchone()[0] or 0)
+
+        # Marge brute = somme des (prix_unitaire - prix_achat) * quantite
+        cursor.execute("""
+            SELECT SUM((v.prix_unitaire - p.prix_achat) * v.quantite) 
+            FROM ventes v
+            JOIN produits p ON v.produit_id = p.id
+        """)
+        marge = float(cursor.fetchone()[0] or 0)
+
+        # Top 5 produits vendus
+        cursor.execute("""
+            SELECT p.nom, SUM(v.quantite) as total
+            FROM ventes v
+            JOIN produits p ON v.produit_id = p.id
+            GROUP BY p.nom
+            ORDER BY total DESC
+            LIMIT 5
+        """)
+        rows = cursor.fetchall()
+        top_ventes = [{"nom": row[0], "quantite": int(row[1])} for row in rows]
+
+        # Produits en rupture (détails)
+        cursor.execute("""
+            SELECT nom, categorie, stock
+            FROM produits
+            WHERE stock = 0
+        """)
+        rows = cursor.fetchall()
+        ruptures_produits = [
+            {"nom": row[0], "categorie": row[1], "stock": int(row[2])} for row in rows
+        ]
+
+    finally:
+        cursor.close()
+        db.close()
+
+    # JSON final, prêt pour React
+    return jsonify({
+        "totalProduits": total_produits,
+        "ruptures": ruptures,
+        "stocksFaibles": stocks_faibles,
+        "valeurStock": valeur_stock,
+        "chiffreAffaires": chiffre_affaire,
+        "margeBrute": marge,
+        "topVentes": top_ventes,    
+        "rupturesList": ruptures_produits
+    })
 
 
 # ============================================================

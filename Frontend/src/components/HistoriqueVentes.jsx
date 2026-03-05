@@ -64,15 +64,6 @@ function HistoriqueVentes() {
                   <td>{vente.produit}</td>
                   <td>{vente.quantite}</td>
                   <td>{vente.total}</td>
-                  {/* <td>
-                    {new Date(vente.date_vente).toLocaleDateString("fr-FR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </td> */}
                   <td>
                     {vente.date_vente
                       ? new Date(vente.date_vente).toLocaleString("fr-FR")
